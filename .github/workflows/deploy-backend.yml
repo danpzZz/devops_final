@@ -1,4 +1,4 @@
-name: Build and Push Backend
+name: Build and Deploy Backend
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 jobs:
-  build-backend:
+  build-and-deploy-backend:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,3 +27,27 @@ jobs:
       - name: Publicar imagen del backend
         run: |
           docker push ghcr.io/danpzzz/devops_final-back:1.0.0
+
+      - name: Desplegar backend en VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            echo "Login en GHCR desde el VPS"
+            echo "${{ secrets.GHCR_PATH }}" | docker login ghcr.io -u danpzZz --password-stdin
+
+            echo "Descargando imagen actualizada"
+            docker pull ghcr.io/danpzzz/devops_final-back:1.0.0
+
+            echo "Desplegando backend"
+            cd /opt/devops/stacks
+            docker stack deploy --with-registry-auth -c backend.yml backend
+
+            echo "Forzando actualización del servicio"
+            docker service update --force --with-registry-auth --image ghcr.io/danpzzz/devops_final-back:1.0.0 backend_backend
+
+            echo "Estado del backend"
+            docker service ls
