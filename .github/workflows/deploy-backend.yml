@@ -1,0 +1,29 @@
+name: Build and Push Backend
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Login en GHCR
+        run: echo "${{ secrets.GHCR_PATH }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Construir imagen del backend
+        run: |
+          docker build -t ghcr.io/danpzzz/devops_final-back:1.0.0 ./back_devops
+
+      - name: Publicar imagen del backend
+        run: |
+          docker push ghcr.io/danpzzz/devops_final-back:1.0.0
