@@ -1,0 +1,70 @@
+name: Build and Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "front_devops/**"
+      - ".github/workflows/deploy-frontend.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Login en GHCR
+        run: echo "${{ secrets.GHCR_PATH }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Construir imagen del frontend
+        run: |
+          docker build -t ghcr.io/danpzzz/devops_final-front:1.0.0 ./front_devops
+
+      - name: Publicar imagen del frontend
+        run: |
+          docker push ghcr.io/danpzzz/devops_final-front:1.0.0
+
+      - name: Copiar stack al VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          source: "front_devops/stack.yml"
+          target: "/opt/devops/stacks"
+          strip_components: 1
+          overwrite: true
+
+      - name: Desplegar frontend en VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          script: |
+            echo "Login en GHCR desde el VPS"
+            echo "${{ secrets.GHCR_PATH }}" | docker login ghcr.io -u danpzZz --password-stdin
+
+            echo "Preparando stack del frontend"
+            mv /opt/devops/stacks/stack.yml /opt/devops/stacks/frontend.yml
+
+            echo "Descargando imagen actualizada"
+            docker pull ghcr.io/danpzzz/devops_final-front:1.0.0
+
+            echo "Desplegando frontend"
+            docker stack deploy --with-registry-auth -c /opt/devops/stacks/frontend.yml frontend
+
+            echo "Forzando actualización del servicio"
+            docker service update --force --with-registry-auth --image ghcr.io/danpzzz/devops_final-front:1.0.0 frontend_frontend
+
+            echo "Estado de servicios"
+            docker service ls

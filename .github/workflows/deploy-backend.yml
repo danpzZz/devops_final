@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-
+    paths:
+      - "back_devops/**"
+      - ".github/workflows/deploy-backend.yml"
+      
 permissions:
   contents: read
   packages: write

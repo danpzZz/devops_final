@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD Productos - Frontend</title>
+</head>
+<body>
+    <h1>CRUD de Productos</h1>
+
+    <h2>Agregar producto</h2>
+
+    <form id="formProducto">
+        <input type="text" id="nombre" placeholder="Nombre" required>
+        <input type="number" id="precio" step="0.01" placeholder="Precio" required>
+        <button type="submit">Guardar</button>
+    </form>
+
+    <h2>Lista de productos</h2>
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Precio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tablaProductos">
+        </tbody>
+    </table>
+
+    <script>
+        const API_URL = "/api/productos";
+
+        async function listarProductos() {
+            const respuesta = await fetch(API_URL);
+            const productos = await respuesta.json();
+
+            const tabla = document.getElementById("tablaProductos");
+            tabla.innerHTML = "";
+
+            productos.forEach(producto => {
+                tabla.innerHTML += `
+                    <tr>
+                        <td>${producto.id}</td>
+                        <td>
+                            <input type="text" id="nombre-${producto.id}" value="${producto.nombre}">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" id="precio-${producto.id}" value="${producto.precio}">
+                        </td>
+                        <td>
+                            <button onclick="actualizarProducto(${producto.id})">Actualizar</button>
+                            <button onclick="eliminarProducto(${producto.id})">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById("formProducto").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const nombre = document.getElementById("nombre").value;
+            const precio = document.getElementById("precio").value;
+
+            await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    precio: parseFloat(precio)
+                })
+            });
+
+            document.getElementById("formProducto").reset();
+            listarProductos();
+        });
+
+        async function actualizarProducto(id) {
+            const nombre = document.getElementById(`nombre-${id}`).value;
+            const precio = document.getElementById(`precio-${id}`).value;
+
+            await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    precio: parseFloat(precio)
+                })
+            });
+
+            listarProductos();
+        }
+
+        async function eliminarProducto(id) {
+            await fetch(`${API_URL}/${id}`, {
+                method: "DELETE"
+            });
+
+            listarProductos();
+        }
+
+        listarProductos();
+    </script>
+</body>
+</html>
